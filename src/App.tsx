@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, lazy, Suspense } from 'react';
 import {
   LayoutDashboard,
   CalendarRange,
@@ -12,18 +12,26 @@ import {
 } from 'lucide-react';
 import { useAppState, defaultState } from './lib/storage';
 import { useActions } from './lib/actions';
-import { ChallengeSection } from './components/sections/ChallengeSection';
-import { HabitTracker } from './components/sections/HabitTracker';
-import { WeeklyPlanPage } from './components/WeeklyPlanPage';
-import { HistoryPage } from './components/HistoryPage';
-import { AgendaPage } from './components/AgendaPage';
-import { TomorrowCard } from './components/sections/TomorrowCard';
 import { ToastViewport } from './components/ui/Toast';
 import { ConfirmHost, confirm } from './components/ui/Confirm';
 import { Button } from './components/ui/Button';
+import { CardSkeleton } from './components/ui/LoadingSpinner';
 import { challengeStats } from './utils/calc';
 import { todayISO, formatDate } from './utils/date';
 import { twMerge } from './components/ui/tw';
+
+const DashboardPage = lazy(() =>
+  import('./components/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
+const AgendaPage = lazy(() =>
+  import('./components/AgendaPage').then((m) => ({ default: m.AgendaPage })),
+);
+const WeeklyPlanPage = lazy(() =>
+  import('./components/WeeklyPlanPage').then((m) => ({ default: m.WeeklyPlanPage })),
+);
+const HistoryPage = lazy(() =>
+  import('./components/HistoryPage').then((m) => ({ default: m.HistoryPage })),
+);
 
 type Tab = 'dashboard' | 'agenda' | 'plan' | 'history';
 
@@ -45,6 +53,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-bg-base text-ink-high grid-pattern">
+      {/* Header */}
       <header className="sticky top-0 z-30 border-b border-bg-border bg-bg-base/80 backdrop-blur-xl">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <div className="flex h-14 items-center justify-between gap-3">
@@ -60,6 +69,7 @@ export default function App() {
                 </div>
               </div>
             </div>
+
             <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
@@ -95,6 +105,7 @@ export default function App() {
       </header>
 
       <div className="mx-auto max-w-5xl px-4 sm:px-6 py-5 sm:py-7 pb-24">
+        {/* Desktop tabs */}
         <nav className="hidden sm:flex items-center gap-1 mb-5 border-b border-bg-border">
           {TABS.map((t) => (
             <TabButton
@@ -107,6 +118,7 @@ export default function App() {
           ))}
         </nav>
 
+        {/* Mobile tab bar */}
         <nav className="sm:hidden flex items-center gap-1 mb-4 -mx-4 px-4 overflow-x-auto no-scrollbar">
           {TABS.map((t) => (
             <TabButton
@@ -120,21 +132,24 @@ export default function App() {
           ))}
         </nav>
 
+        {/* Seed banner */}
         {!state.seeded && (
           <SeedBanner onLoadSeed={() => setState({ ...defaultState(), seeded: true })} />
         )}
 
         <main className="animate-fade-in">
-          {tab === 'dashboard' && (
-            <div className="space-y-4">
-              <TomorrowCard state={state} actions={actions} onGoToAgenda={() => setTab('agenda')} />
-              <ChallengeSection state={state} actions={actions} />
-              <HabitTracker state={state} actions={actions} />
-            </div>
-          )}
-          {tab === 'agenda' && <AgendaPage state={state} actions={actions} />}
-          {tab === 'plan' && <WeeklyPlanPage state={state} actions={actions} />}
-          {tab === 'history' && <HistoryPage state={state} />}
+          <Suspense fallback={<CardSkeleton />}>
+            {tab === 'dashboard' && (
+              <DashboardPage
+                state={state}
+                actions={actions}
+                onGoToAgenda={() => setTab('agenda')}
+              />
+            )}
+            {tab === 'agenda' && <AgendaPage state={state} actions={actions} />}
+            {tab === 'plan' && <WeeklyPlanPage state={state} actions={actions} />}
+            {tab === 'history' && <HistoryPage state={state} />}
+          </Suspense>
         </main>
 
         <footer className="mt-12 pt-6 border-t border-bg-border text-center">
